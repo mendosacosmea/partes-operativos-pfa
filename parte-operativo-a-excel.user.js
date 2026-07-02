@@ -6,6 +6,8 @@
 // @match        https://partes.pages.dev/sitios_partes/parte_Operativo/*
 // @grant        none
 // @require      https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js
+// @updateURL    https://raw.githubusercontent.com/mendosacosmea/partes-operativos-pfa/main/parte-operativo-a-excel.user.js
+// @downloadURL  https://raw.githubusercontent.com/mendosacosmea/partes-operativos-pfa/main/parte-operativo-a-excel.user.js
 // ==/UserScript==
 
 (function () {
@@ -111,7 +113,6 @@
         const btnAgrDireccion = document.getElementById("btn-direccion");
         if (btnAgrDireccion) {
             btnAgrDireccion.addEventListener("click", () => {
-                // Se ejecuta DESPUÉS del listener original (que ya creó el domicilio nuevo)
                 setTimeout(() => {
                     const direcciones = document.querySelectorAll('[id^="contenedor__dir"]');
                     const ultima = direcciones[direcciones.length - 1];
@@ -158,7 +159,7 @@
         if (i < 1) return null;
         const pref = `dir${numDire}-imputado${i}-`;
         if (!document.getElementById(pref + "nombres")) return null;
-        const pedidoCap = val(pref + "pedidoCap"); // "NO" | "SI - Nacional" | "SI - Internacional"
+        const pedidoCap = val(pref + "pedidoCap");
         const poseeCaptura = pedidoCap.toUpperCase().startsWith("SI") ? "SI" : "NO";
         const capturaTipo = pedidoCap.includes("Nacional") ? "NACIONAL" : (pedidoCap.includes("Internacional") ? "INTERNACIONAL" : VACIO);
         const situacionProc = val(pref + "situacionProc");
@@ -373,8 +374,8 @@
         }
 
         const rango = XLSX.utils.decode_range(ws['!ref'] || "A1:A1");
-        let filaSiguiente = rango.e.r + 1; // siguiente fila libre (0-indexed)
-        if (filaSiguiente < 1) filaSiguiente = 1; // asegurar debajo del header
+        let filaSiguiente = rango.e.r + 1;
+        if (filaSiguiente < 1) filaSiguiente = 1;
 
         XLSX.utils.sheet_add_aoa(ws, filas, { origin: { r: filaSiguiente, c: 0 } });
 
@@ -412,7 +413,6 @@
         cont.appendChild(btnCrear);
         btnPrint.parentNode.insertBefore(cont, btnPrint.nextSibling);
 
-        // Enganchar la generación del Excel DESPUÉS de que arranque la generación del PDF
         btnPrint.addEventListener("click", async () => {
             const filas = recolectarTodasLasFilas();
             const ok = await agregarFilasAlMaestro(filas);
