@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PFA Parte Operativo -> Excel Maestro
 // @namespace    hernan-automatizacion
-// @version      2.1
+// @version      2.2
 // @description  Agrega campos extra al Parte Operativo y, al generar el PDF, suma automáticamente filas a un Excel maestro (formato "PARA CARGAR").
 // @match        https://partes.pages.dev/sitios_partes/parte_Operativo/*
 // @grant        none
@@ -16,11 +16,12 @@
     // =========================================================
     // 0. ENCABEZADOS EXACTOS DE LA HOJA "PARA CARGAR"
     // =========================================================
-    const HEADERS = ["SUPERINTENDENCIA Y/O DIRECCION GENERAL", "DEPENDENCIA", "SUMARIO ", "PARTE INFORMATIVO ", "DELITO NRO. 1", "DELITO NRO. 2", "DELITO NRO. 3", "MODALIDAD (DEL DELITO)", "DETALLE (DEL DELITO)", "POSEE CAPTURA", "TIPO DE CAPTURA", "MOTIVO CAPTURA", "TIPO DE INTERVENCION POLICIAL", "FECHA", "PAIS", "PROVINCIA", "PARTIDO", "LOCALIDAD", "DIRECCION", "DETALLES DIRECCION", "LATITUD", "LONGITUD", "JUZGADO", "SECRETARIA", "APELLIDO IMPUTADO", "NOMBRE IMPUTADO", "ALIAS IMPUTADO", "SEXO IMPUTADO", "EDAD IMPUTADO", "NACIONALIDAD IMPUTADO", "DNI IMPUTADO", "DOMICILIO IMPUTADO", "DETENIDO", "TIPO ARMA", "DETALLE ARMA", "MARCA ARMA", "MODELO ARMA", "CALIBRE ARMA", "NUMERO ARMA", "CANTIDAD ARMAS", "PEDIDO SECUESTRO", "OBSERVACIONES ARMA", "TIPO DROGA", "CANTIDAD DROGA", "MEDICION DROGA", "OBSERVACIONES DROGA", "TIPO ELEMENTO", "DETALLE ELEMENTO", "CANTIDAD ELEMENTO", "MEDICION ELEMENTO", "AFORO ELEMENTO", "OBSERVACIONES ELEMENTO", "MARCA VEHICULO", "MODELO VEHICULO", "DOMINIO VEHICULO", "TIPO VEHICULO", "DETALLES VEHICULO", "APELLIDO VICTIMA", "NOMBRE VICTIMA", "EDAD VICTIMA", "SEXO VICTIMA", "NACIONALIDAD VICTIMA", "DNI VICTIMA", "DOMICILIO VICTIMA", "CANTIDAD VICTIMAS", "PROCEDIMIENTO"];
+    const HEADERS = ["SUPERINTENDENCIA Y/O DIRECCION GENERAL", "DEPENDENCIA", "SUMARIO ", "PARTE INFORMATIVO ", "DELITO NRO. 1", "DELITO NRO. 2", "DELITO NRO. 3", "MODALIDAD (DEL DELITO)", "DETALLE (DEL DELITO)", "POSEE CAPTURA", "TIPO CAPTURA", "MOTIVO CAPTURA", "TIPO DE INTERVENCIÓN", "FECHA Y HORA", "PAÍS", "PROVINCIA", "PARTIDO", "LOCALIDAD", "DIRECCIÓN", "DETALLE DIRECCIÓN", "LATITUD", "LONGITUD", "JUZGADO", "SECRETARÍA", "DETALLE", "APELLIDO", "NOMBRE", "ALIAS", "SEXO", "EDAD", "NACIONALIDAD", "DNI", "DOMICILIO", "DETENIDO", "TIPO ARMA", "DETALLE ARMA", "MARCA ARMA", "MODELO ARMA", "CALIBRE ARMA", "NRO SERIE ARMA", "CANTIDAD ARMA", "PED. SEC. ARMA", "OBS. ARMA", "TIPO DROGA", "CANTIDAD DROGA", "MEDICIÓN DROGA", "OBS. DROGA", "TIPO ELEMENTO", "DETALLE ELEMENTO", "CANTIDAD ELEMENTO", "MEDICIÓN ELEMENTO", "AFORO ELEMENTO", "OBS. ELEMENTO", "MARCA VEHÍCULO", "MODELO VEHÍCULO", "DOMINIO VEHÍCULO", "TIPO VEHÍCULO", "DETALLES VEHÍCULO", "APELLIDO VÍCTIMA", "NOMBRE VÍCTIMA", "EDAD VÍCTIMA", "SEXO VÍCTIMA", "NACIONALIDAD VÍCTIMA", "DNI VÍCTIMA", "DOMICILIO VÍCTIMA", "CANTIDAD VÍCTIMAS", "PROCEDIMIENTO"];
     const SHEET_NAME = "PARA CARGAR";
     const VACIO = "-";
 
-    const OPCIONES_INTERVENCION = ["ALLANAMIENTO", "CAPTURA", "PREVENCION VIA PUBLICA", "CONTROL TERMINAL DE OMNIBUS", "CONTROL VEHICULAR", "CONTROL POBLACIONAL", "SECUESTRO", "ORDEN DE PRESENTACION", "REQUISA", "PROCEDIMIENTO ORDINARIO", "OTROS"];
+    const OPCIONES_INTERVENCION = ["ALLANAMIENTO", "CAPTURA", "PREVENCION VIA PUBLICA", "CONTROL TERMINAL DE OMNIBUS", "CONTROL VEHICULAR", "CONTROL POBLACIONAL", "SECUESTRO", "ORDEN DE PRESENTACION", "OTRO"];
+    const OPCIONES_DETALLE_DIRECCION = ["VÍA PÚBLICA", "DOMICILIO", "CASA", "COMERCIO", "OTRO"];
 
     // =========================================================
     // 1. HELPERS
@@ -76,9 +77,18 @@
                     </select>
                 </div>
                 <div class="form_datos">
+                    <label for="excel-detalle-direccion">Detalle de la Dirección</label><br>
+                    <select id="excel-detalle-direccion">
+                        <option value="">${VACIO}</option>
+                        ${OPCIONES_DETALLE_DIRECCION.map(o => `<option value="${o}">${o}</option>`).join("")}
+                    </select>
+                </div>
+                <div class="form_datos">
                     <label for="excel-juzgado">Juzgado</label><br>
                     <input type="text" id="excel-juzgado">
                 </div>
+            </div>
+            <div class="form_row_datos form_datos-triple">
                 <div class="form_datos">
                     <label for="excel-secretaria">Secretaría</label><br>
                     <input type="text" id="excel-secretaria">
@@ -158,6 +168,7 @@
             fecha: val("fechayhora"),
             juzgado: val("excel-juzgado"),
             secretaria: val("excel-secretaria"),
+            detalle: val("excel-detalle-direccion"),
             procedimiento: `${codigo}-PO-${numParte}-${anio}`
         };
     }
@@ -273,6 +284,7 @@
                 gen.tipoIntervencion, gen.fecha,
                 base.pais, base.provincia, base.partido, base.localidad, base.direccion, base.detalleDireccion,
                 base.latitud, base.longitud, gen.juzgado, gen.secretaria,
+                gen.detalle,
                 imp ? imp.apellido : "", imp ? imp.nombre : "", imp ? imp.alias : "", imp ? imp.sexo : "",
                 imp ? imp.edad : "", imp ? imp.nacionalidad : "", imp ? imp.dni : "", imp ? imp.domicilio : "",
                 imp ? imp.detenido : VACIO,
