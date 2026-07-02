@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PFA Parte Operativo -> Excel Maestro
 // @namespace    hernan-automatizacion
-// @version      2.0
+// @version      2.1
 // @description  Agrega campos extra al Parte Operativo y, al generar el PDF, suma automáticamente filas a un Excel maestro (formato "PARA CARGAR").
 // @match        https://partes.pages.dev/sitios_partes/parte_Operativo/*
 // @grant        none
@@ -16,11 +16,11 @@
     // =========================================================
     // 0. ENCABEZADOS EXACTOS DE LA HOJA "PARA CARGAR"
     // =========================================================
-    const HEADERS = ["SUPERINTENDENCIA Y/O DIRECCION GENERAL", "DEPENDENCIA", "SUMARIO ", "PARTE INFORMATIVO ", "DELITO NRO. 1", "DELITO NRO. 2", "DELITO NRO. 3", "MODALIDAD (DEL DELITO)", "DETALLE (DE DELITO)", "POSEE CAPTURA (SI/NO)", "CAPTURA (NAC/INTER)", "MOTIVO DE LA CAPTURA ", "TIPO DE INTERVENCION POLICIAL", "FECHA", "PAIS ", "PROVINCIA", "PARTIDO O DEPARTAMENTO", "LOCALIDAD O ESTACION", "DIRECCION", "DETALLES DE LA DIRECCION", "LATITUD", "LONGITUD ", "JUZGADO", "SECRETARIA ", "APELLIDO", "NOMBRE", "ALIAS", "SEXO/GENERO", "EDAD ", "NACIONALIDAD", "DNI", "DOMICILIO", "DETENIDO (SI/NO)", "TIPO ", "DETALLE", "MARCA ", "MODELO", "CALIBRE ", "NUMERACION ", "CANTIDAD ", "PEDIDO DE SECUESTRO (SI/NO)", "OBSERVACIONES (AGREGAR DATOS DE INTERES)", "TIPO DROGA               ", "CANTIDAD ", "TIPO DE MEDICION                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      ", "OBSERVACIONES (DETALLAR LO QUE HA INGRESADO)", "TIPO DE ELEMENTO ", "DETALLE", "CANTIDAD", "TIPO DE MEDICION                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      ", "AFORO (en pesos)", "OBSERVACIONES (DETALLAR LO QUE HA INGRESADO)", "MARCA ", "MODELO ", "DOMINIO", "TIPO DE VEHICULO ", "DETALLES", "APELLIDO", "NOMBRE ", "EDAD ", "SEXO/GENERO", "NACIONALIDAD", "DNI", "DOMICILIO", "CANTIDAD DE VICTIMAS ", "PROCEDIMIENTO "];
+    const HEADERS = ["SUPERINTENDENCIA Y/O DIRECCION GENERAL", "DEPENDENCIA", "SUMARIO ", "PARTE INFORMATIVO ", "DELITO NRO. 1", "DELITO NRO. 2", "DELITO NRO. 3", "MODALIDAD (DEL DELITO)", "DETALLE (DEL DELITO)", "POSEE CAPTURA", "TIPO DE CAPTURA", "MOTIVO CAPTURA", "TIPO DE INTERVENCION POLICIAL", "FECHA", "PAIS", "PROVINCIA", "PARTIDO", "LOCALIDAD", "DIRECCION", "DETALLES DIRECCION", "LATITUD", "LONGITUD", "JUZGADO", "SECRETARIA", "APELLIDO IMPUTADO", "NOMBRE IMPUTADO", "ALIAS IMPUTADO", "SEXO IMPUTADO", "EDAD IMPUTADO", "NACIONALIDAD IMPUTADO", "DNI IMPUTADO", "DOMICILIO IMPUTADO", "DETENIDO", "TIPO ARMA", "DETALLE ARMA", "MARCA ARMA", "MODELO ARMA", "CALIBRE ARMA", "NUMERO ARMA", "CANTIDAD ARMAS", "PEDIDO SECUESTRO", "OBSERVACIONES ARMA", "TIPO DROGA", "CANTIDAD DROGA", "MEDICION DROGA", "OBSERVACIONES DROGA", "TIPO ELEMENTO", "DETALLE ELEMENTO", "CANTIDAD ELEMENTO", "MEDICION ELEMENTO", "AFORO ELEMENTO", "OBSERVACIONES ELEMENTO", "MARCA VEHICULO", "MODELO VEHICULO", "DOMINIO VEHICULO", "TIPO VEHICULO", "DETALLES VEHICULO", "APELLIDO VICTIMA", "NOMBRE VICTIMA", "EDAD VICTIMA", "SEXO VICTIMA", "NACIONALIDAD VICTIMA", "DNI VICTIMA", "DOMICILIO VICTIMA", "CANTIDAD VICTIMAS", "PROCEDIMIENTO"];
     const SHEET_NAME = "PARA CARGAR";
     const VACIO = "-";
 
-    const OPCIONES_INTERVENCION = ["ALLANAMIENTO", "CAPTURA", "PREVENCION VIA PUBLICA", "CONTROL TERMINAL DE OMNIBUS", "CONTROL VEHICULAR", "CONTROL POBLACIONAL", "SECUESTRO", "ORDEN DE PRESENTACION", "FLAGRANCIA", "DETENCION", "OTRA"];
+    const OPCIONES_INTERVENCION = ["ALLANAMIENTO", "CAPTURA", "PREVENCION VIA PUBLICA", "CONTROL TERMINAL DE OMNIBUS", "CONTROL VEHICULAR", "CONTROL POBLACIONAL", "SECUESTRO", "ORDEN DE PRESENTACION", "REQUISA", "PROCEDIMIENTO ORDINARIO", "OTROS"];
 
     // =========================================================
     // 1. HELPERS
@@ -32,6 +32,21 @@
     }
     function orGuion(v) {
         return (v === "" || v === null || v === undefined) ? VACIO : v;
+    }
+
+    // =========================================================
+    // 1.1 FUNCIÓN PARA EXTRAER LAT/LONG DEL CAMPO COORDENADAS
+    // =========================================================
+    function extraerLatLong(coordenadas) {
+        if (!coordenadas || coordenadas === "") return { lat: "", long: "" };
+        
+        const partes = coordenadas.split(",");
+        if (partes.length < 2) return { lat: "", long: "" };
+        
+        const lat = partes[0].trim();
+        const long = partes[1].trim();
+        
+        return { lat, long };
     }
 
     // =========================================================
@@ -73,7 +88,7 @@
         contenedorDirecciones.parentNode.insertBefore(bloque, contenedorDirecciones);
     }
 
-    // --- 2.2 Campos por domicilio (Detalles dirección, Lat, Long, Alias imputados) ---
+    // --- 2.2 Campos por domicilio (Detalles dirección, Alias imputados) ---
     function inyectarCamposDomicilio(numDire) {
         const coordInput = document.getElementById(`dir${numDire}-coordenadas`);
         if (!coordInput) return;
@@ -89,14 +104,6 @@
             <div class="form_datos">
                 <label for="dir${numDire}-detalleDireccion">Detalles de la dirección (Excel)</label><br>
                 <input type="text" id="dir${numDire}-detalleDireccion" placeholder="Piso, depto, entre calles, etc.">
-            </div>
-            <div class="form_datos">
-                <label for="dir${numDire}-latitud">Latitud (Excel)</label><br>
-                <input type="text" id="dir${numDire}-latitud">
-            </div>
-            <div class="form_datos">
-                <label for="dir${numDire}-longitud">Longitud (Excel)</label><br>
-                <input type="text" id="dir${numDire}-longitud">
             </div>
             <div class="form_datos" style="flex-basis:100%;">
                 <label for="dir${numDire}-aliasImputados">Alias de imputados (Excel) — separados por coma, mismo orden que los imputados cargados</label><br>
@@ -225,6 +232,10 @@
         const esInternacional = pcia === "INTERNACIONAL";
         const pais = esInternacional ? val(`dir${numDire}-localidad`) : "ARGENTINA";
 
+        // Extraer latitud y longitud del campo coordenadas
+        const coordenadas = val(`dir${numDire}-coordenadas`);
+        const { lat, long } = extraerLatLong(coordenadas);
+
         const base = {
             pais,
             provincia: esInternacional ? "" : pcia,
@@ -232,8 +243,8 @@
             localidad: val(`dir${numDire}-loc`),
             direccion: val(`dir${numDire}-calle`),
             detalleDireccion: val(`dir${numDire}-detalleDireccion`),
-            latitud: val(`dir${numDire}-latitud`),
-            longitud: val(`dir${numDire}-longitud`)
+            latitud: lat,
+            longitud: long
         };
 
         const aliasArray = val(`dir${numDire}-aliasImputados`).split(",").map(s => s.trim());
